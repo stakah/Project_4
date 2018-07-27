@@ -68,9 +68,6 @@ let inducedErrorBlocks = [2,4,7];
   }, 100);
 })(3);
 
-for (var i = 0; i < inducedErrorBlocks.length; i++) {
-  blockchain.chain[inducedErrorBlocks[i]].data='induced chain error';
-}
 ```
 8: Validate blockchain. The chain should now fail with blocks 2,4, and 7.
 ```
