@@ -2,7 +2,7 @@
   "name": "project_2",
   "version": "1.0.0",
   "description": "Blockchain has the potential to change the way that the world approaches data. Develop Blockchain skills by understanding the data model behind Blockchain by developing your own simplified private blockchain.",
-  "main": "levelSandbox.js",
+  "main": "simpleChain.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,5 +20,9 @@
   "bugs": {
     "url": "https://github.com/stakah/Project_2/issues"
   },
-  "homepage": "https://github.com/stakah/Project_2#readme"
+  "homepage": "https://github.com/stakah/Project_2#readme",
+  "dependencies": {
+    "crypto-js": "^3.1.9-1",
+    "level": "^4.0.0"
+  }
 }
