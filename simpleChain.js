@@ -160,34 +160,43 @@ class Blockchain{
       
       this.getBlockHeight()
           .then((size)=>{
+            var promises = [];
             for (var i=0; i<size-2; i++) {
-              // validate block
-              this.validateBlock(i)
-                  .then((valid)=>{
-                    if (!valid) errorLog.push(i);
-                    // compare blocks hash link
-                    let p1 = this.getBlock(i);
-                    let p2 = this.getBlock(i+1);
+              let p = new Promise((resolve, reject)=>{
+                let key = i;
+                // validate block
+                this.validateBlock(key)
+                    .then((valid)=>{
+                      if (!valid) errorLog.push(key);
+                      // compare blocks hash link
+                      let p1 = this.getBlock(key);
+                      let p2 = this.getBlock(key+1);
 
-                    Promise.all([p1,p2])
-                           .then((values) => {
-                             let blockHash = values[0].hash;
-                             let previousHash = values[1].previousBlockHash;
+                      Promise.all([p1,p2])
+                            .then((values) => {
+                              let blockHash = values[0].hash;
+                              let previousHash = values[1].previousBlockHash;
 
-                             if (blockHash !== previousHash) {
-                               errorLog.push(i);
-                             }
-                           })
-                  })
+                              if (blockHash !== previousHash) {
+                                errorLog.push(key);
+                              }
+                              resolve();
+                              })
+                    })
+
+              });
+              promises.push(p);
             }
-          })
-          .then(()=>{
-            if (errorLog.length>0) {
-              console.log('Block errors = ' + errorLog.length);
-              console.log('Blocks: '+errorLog);
-            } else {
-              console.log('No errors detected');
-            }
-          })
+
+            Promise.all(promises).then(()=>{
+              if (errorLog.length>0) {
+                console.log('Block errors = ' + errorLog.length);
+                console.log('Blocks: '+errorLog);
+              } else {
+                console.log('No errors detected');
+              }
+            })
+          });
     }
 }
+

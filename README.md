@@ -40,9 +40,12 @@ let blockchain = new Blockchain();
 ```
 5: Generate 10 blocks using a for loop
 ```
-for (var i = 0; i <= 10; i++) {
-  blockchain.addBlock(new Block("test data "+i));
-}
+(function theLoop (i) {
+  setTimeout(function () {
+    blockchain.addBlock(new Block('test data' + i));
+    if (--i) theLoop(i);
+  }, 100);
+})(10);
 ```
 6: Validate blockchain
 ```
@@ -51,6 +54,20 @@ blockchain.validateChain();
 7: Induce errors by changing block data
 ```
 let inducedErrorBlocks = [2,4,7];
+(function theLoop (i) {
+  setTimeout(function () {
+    let key = inducedErrorBlocks[i-1];
+    blockchain.getBlock(key)
+      .then((block)=>{
+        block.data = 'induced chain error';
+        db.put(key, JSON.stringify(block), function(err) {
+          if (err) console.log(err);
+        })
+      });
+    if (--i) theLoop(i);
+  }, 100);
+})(3);
+
 for (var i = 0; i < inducedErrorBlocks.length; i++) {
   blockchain.chain[inducedErrorBlocks[i]].data='induced chain error';
 }
