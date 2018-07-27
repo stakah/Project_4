@@ -1,0 +1,24 @@
+{
+  "name": "project_2",
+  "version": "1.0.0",
+  "description": "Blockchain has the potential to change the way that the world approaches data. Develop Blockchain skills by understanding the data model behind Blockchain by developing your own simplified private blockchain.",
+  "main": "levelSandbox.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sergio Takahashi",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stakah/Project_2.git"
+  },
+  "keywords": [
+    "Udacity",
+    "Blockchain",
+    "Project_2"
+  ],
+  "bugs": {
+    "url": "https://github.com/stakah/Project_2/issues"
+  },
+  "homepage": "https://github.com/stakah/Project_2#readme"
+}
