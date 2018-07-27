@@ -191,6 +191,3 @@ class Blockchain{
           })
     }
 }
-
-
-bc = new Blockchain();
