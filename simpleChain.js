@@ -34,7 +34,7 @@ class Blockchain{
   constructor(){
     this.getBlockHeight()
         .then((value)=>{
-          if (value == 0) {
+          if (value < 0) {
             this.addBlock(new Block("First block in the chain - Genesis block"));
           }
         }, (error)=>{
@@ -55,8 +55,8 @@ class Blockchain{
         .then((height) => {
           var p1, p2;
 
-          if (height > 0) {
-            p1 = this.getBlock(height-1)
+          if (height >= 0) {
+            p1 = this.getBlock(height)
                 .then((previousBlock)=>{
                   // previous block hash
                   newBlock.previousBlockHash = previousBlock.hash;
@@ -69,7 +69,7 @@ class Blockchain{
           Promise.all([p1,p2])
                  .then(()=>{
                   // Block height
-                  newBlock.height = height;
+                  newBlock.height = height+1;
                   // UTC timestamp
                   newBlock.time = new Date().getTime().toString().slice(0,-3);
                   // Block hash with SHA256 using newBlock and converting to a string
@@ -110,7 +110,7 @@ class Blockchain{
         })
         .on('end', function(){
           //console.log('resolve:'+h);
-          resolve(h);
+          resolve(h-1);
         })
       });
 
@@ -159,32 +159,29 @@ class Blockchain{
       let errorLog = [];
       
       this.getBlockHeight()
-          .then((size)=>{
-            var promises = [];
-            for (var i=0; i<size-2; i++) {
+          .then((height)=>{
+            let promises = [];
+            for (var i=1; i<=height; i++) {
               let p = new Promise((resolve, reject)=>{
                 let key = i;
-                // validate block
-                this.validateBlock(key)
-                    .then((valid)=>{
-                      if (!valid) errorLog.push(key);
-                      // compare blocks hash link
-                      let p1 = this.getBlock(key);
-                      let p2 = this.getBlock(key+1);
-
-                      Promise.all([p1,p2])
-                            .then((values) => {
-                              let blockHash = values[0].hash;
-                              let previousHash = values[1].previousBlockHash;
-
-                              if (blockHash !== previousHash) {
+                var blockHash = "", previousHash = "";
+                return  this.getBlock(key)
+                            .then((block)=>{
+                              previousHash = block.previousBlockHash;
+                              return this.getBlock(key-1);
+                            })
+                            .then((block)=>{
+                              blockHash = block.hash;
+                              return this.validateBlock(key);
+                            })
+                            .then((valid)=>{
+                              //console.log(key, valid, blockHash, previousHash);
+                              if (!valid || (key > 0 && blockHash != previousHash)) {
                                 errorLog.push(key);
                               }
                               resolve();
-                              })
-                    })
-
-              });
+                            });
+                });
               promises.push(p);
             }
 
@@ -195,7 +192,7 @@ class Blockchain{
               } else {
                 console.log('No errors detected');
               }
-            })
+            });
           });
     }
 }
