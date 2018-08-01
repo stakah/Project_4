@@ -83,7 +83,6 @@ class Blockchain{
            .then(data=>resolve(parseInt(data))
                 ,err=>{
                   var h = 0;
-                  //let p = new Promise(function(resolve, reject) {
                   db.createKeyStream()
                     .on('data', function (key) {
                        if (key !== HEIGHT_KEY) h++;
