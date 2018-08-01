@@ -42,28 +42,38 @@ class Blockchain{
 
   // Add new block
   addBlock(newBlock){
-   return this.getBlockHeight()
-              .then(height => {
-                // Block height
-                newBlock.height = height+1;
-                // UTC timestamp
-                newBlock.time = new Date().getTime().toString().slice(0,-3);
-                // Block hash with SHA256 using newBlock and converting to a string
-                newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
-                if (height >= 0) {
-                  (async () => {
-                    await this.getBlock(height)
-                              .then(previousBlock=>{
-                                newBlock.previousBlockHash = previousBlock.hash;
-                              });
-                  }).bind(this)();
-                }
+    return new Promise((resolve,reject)=> {
+      this.getBlockHeight()
+          .then((height) => {
+            var p1, p2;
 
-                // Adding block object to chain
-                return this.addLevelDBData(newBlock.height, newBlock);
-              }, error=>{
-                console.log("[addBlock]", error)
-              });
+            if (height >= 0) {
+              p1 = this.getBlock(height)
+                  .then((previousBlock)=>{
+                    // previous block hash
+                    newBlock.previousBlockHash = previousBlock.hash;
+                  })
+            }
+            else {
+              p2 = Promise.resolve(1);
+            }
+
+            Promise.all([p1,p2])
+                  .then(()=>{
+                    // Block height
+                    newBlock.height = height+1;
+                    // UTC timestamp
+                    newBlock.time = new Date().getTime().toString().slice(0,-3);
+                    // Block hash with SHA256 using newBlock and converting to a string
+                    newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
+                    // Adding block object to chain
+                    this.addLevelDBData(newBlock.height, newBlock);
+                    resolve();
+                  })
+            }, (error)=>{
+              console.log("[addBlock]", error)
+            });
+      });
   }
 
   // Add data to levelDB with key/value pair
@@ -160,15 +170,13 @@ class Blockchain{
                           })
                           ;
               }
+              if (errorLog.length>0) {
+                console.log('Block errors = ' + errorLog.length);
+                console.log('Blocks: '+errorLog);
+              } else {
+                console.log('No errors detected');
+              }
             }).bind(this)();
-          })
-          .then(()=>{
-            if (errorLog.length>0) {
-              console.log('Block errors = ' + errorLog.length);
-              console.log('Blocks: '+errorLog);
-            } else {
-              console.log('No errors detected');
-            }
           });
     }
 }

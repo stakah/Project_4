@@ -49,7 +49,7 @@ let blockchain = new Blockchain();
   console.log('Blockchain height: ' + h);
   for (let i=0; i<=h; i++) {
     let b = await blockchain.getBlock(i);
-    console.log('block #' + i + ' - ' + b.body);
+    console.log('block #' + i + ' - ' + b.body + ' - ' + b.previousBlockHash);
   }
 })();
 ```
@@ -65,7 +65,7 @@ blockchain.validateChain();
     let key = inducedErrorBlocks[i];
     let b = await blockchain.getBlock(key)
                     .then(block => {
-                      block.data = 'induced chain error';
+                      block.body = 'induced chain error';
                       db.put(key, JSON.stringify(block), function(err) {
                         if (err) console.log(err);
                       })
