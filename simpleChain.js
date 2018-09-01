@@ -54,17 +54,27 @@ class Blockchain{
     // Block hash with SHA256 using newBlock and converting to a string
     newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
     // Adding block object to chain
-    return this.addLevelDBData(newBlock.height, newBlock);
+    await this.addLevelDBData(newBlock.height, newBlock);
+    const aBlock = await this.getBlock(newBlock.height);
+    return aBlock;
    }
 
   // Add data to levelDB with key/value pair
   addLevelDBData(key,value){
-    db.batch()
+    return new Promise((resolve, reject)=>{
+      db.batch()
       .put(HEIGHT_KEY, key)
       .put(key, JSON.stringify(value))
       .write(function(err) {
-      if (err) return console.log('Block ' + key + ' submission failed', err);
-    })
+        if (err) {
+          console.log('Block ' + key + ' submission failed', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+
+    });
   }
 
   // Get block height
@@ -148,3 +158,4 @@ class Blockchain{
   }
 }
 
+module.exports = Blockchain

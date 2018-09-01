@@ -23,58 +23,69 @@ To test code:
 
 1) Open a command prompt or shell terminal after install node.js.
 
-2) Enter a node session, also known as REPL (Read-Evaluate-Print-Loop).
+2) Run the web server with the command:
 ```
-node
+node server.js
 ```
-3) Copy and paste your code into your node session
+3) Open browser and access the address [http://localhost:8000/block/0](http://localhost:8000/block/0) to get
+the block at block height 0 - the genesis block
 
-4) Instantiate blockchain with blockchain variable
+4) Or, use another command prompt or shell terminal and run the `curl` tool
 ```
-let blockchain = new Blockchain();
+curl http://localhost:8000/block/0
 ```
-5) Generate 10 blocks using a for loop
+5) To create and add a new block in the blockchain, do an HTTP POST using `curl`
+
+On a MacOS X/linux machine:
 ```
-(async function loop () {
-  for (let i=1; i<=10; i++) {
-    console.log('creating block ' + i);
-    await blockchain.addBlock(new Block('test data' + i));
-  }
-})();
-````
-6) Check generated blocks
+curl -X "POST" "http://localhost:8000/block" -H 'Content-Type: application/json' -d $'{"body":"block body contents"}'
 ```
-(async function loop () {
-  let h = await blockchain.getBlockHeight();
-  console.log('Blockchain height: ' + h);
-  for (let i=0; i<=h; i++) {
-    let b = await blockchain.getBlock(i);
-    console.log('block #' + i + ' - ' + b.body + ' - ' + b.previousBlockHash);
-  }
-})();
+
+On a Windows machine:
 ```
-7) Validate blockchain
+curl -X "POST" "http://localhost:8000/block" -H "Content-Type: application/json" -d "{\"body\":\"block body contents\"}"
 ```
-blockchain.validateChain();
-```
-8) Induce errors by changing block data
-```
-(async function loop() {
-  let inducedErrorBlocks = [2,4,7];
-  for (let i=0; i<3; i++) {
-    let key = inducedErrorBlocks[i];
-    let b = await blockchain.getBlock(key)
-                    .then(block => {
-                      block.body = 'induced chain error';
-                      db.put(key, JSON.stringify(block), function(err) {
-                        if (err) console.log(err);
-                      })
-          });
-  }
-})();
+
+## Endpoints documentation
+
+> The endpoints documentation can also be viewed at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+
+### GET /block/{BLOCK_HEIGHT}
+
+Gets a block using the `BLOCK_HEIGHT` as the path parameter. Returns a JSON formatted block content.
+
+* URL: `/block/{BLOCK_HEIGHT}`
+* method: `GET`
+* response: JSON formatted block content.
+
+#### Response example
 
 ```
-9) Validate blockchain. The chain should now fail with blocks 2,4, and 7.
+curl http://localhost:8000/block/0
+{"hash":"9695500836e92049f3fcc6f04fb13fda41ee9b42daa6a86347e26fc062dab51a","height":0,"body":"First block in the chain - Genesis block","time":"1535763291","previousBlockHash":""}
+
 ```
-blockchain.validateChain();
+#### Error response
+A 404 response will be returned containing an error object if the blockchain does not contain a block with the given `BLOCK_HEIGHT`.
+
+```
+curl http://localhost:8000/block/1000
+{"error":{"code":404,"message":"Key not found in database [1000]"}}
+```
+
+### POST /block
+
+Creates and adds a new block in the blockchain. The request must contain a JSON formatted request body. Returns
+a JSON formatted block content.
+
+* URL: `/block`
+* method: `POST`
+* response: JSON formatted block content.
+
+#### Response example
+
+```
+curl -X "POST" "http://localhost:8000/block" -H 'Content-Type: application/json' -d $'{"body":"block body contents"}'
+{"hash":"f1b282f27696d6d53492deee7cd2424153eff5679404429c97b4089ca11d2886","height":5,"body":" ","time":"1535768385","previousBlockHash":"568e0f3e164b5a6e5514346e5c898f293af453355ed8b8a2578ea1be7c984d4b"}
 ```

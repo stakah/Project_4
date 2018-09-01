@@ -1,5 +1,5 @@
 {
-  "name": "project_2",
+  "name": "project_3",
   "version": "1.0.0",
   "description": "Blockchain has the potential to change the way that the world approaches data. Develop Blockchain skills by understanding the data model behind Blockchain by developing your own simplified private blockchain.",
   "main": "simpleChain.js",
@@ -10,19 +10,26 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stakah/Project_2.git"
+    "url": "git+https://github.com/stakah/Project_3.git"
   },
   "keywords": [
     "Udacity",
     "Blockchain",
-    "Project_2"
+    "Project_3"
   ],
   "bugs": {
-    "url": "https://github.com/stakah/Project_2/issues"
+    "url": "https://github.com/stakah/Project_3/issues"
   },
-  "homepage": "https://github.com/stakah/Project_2#readme",
+  "homepage": "https://github.com/stakah/Project_3#readme",
   "dependencies": {
     "crypto-js": "^3.1.9-1",
-    "level": "^4.0.0"
+    "handlebars": "^4.0.11",
+    "hapi": "^17.5.4",
+    "hapi-pino": "^5.0.1",
+    "inert": "^5.1.0",
+    "level": "^4.0.0",
+    "lout": "^11.1.0",
+    "showdown": "^1.8.6",
+    "vision": "^5.4.0"
   }
 }
