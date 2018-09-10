@@ -21,6 +21,18 @@ const Block = require('./block');
 // The key to store the block height
 const HEIGHT_KEY = 'heightKey';
 
+// Index object map block hash -> block height
+const HASH_IDX = 'hashIdx';
+
+// Index object map block address -> array of block heights
+const ADDR_IDX = 'addrIdx';
+
+/* ===== Blockchain Class ====================================
+|  Bitcoinjs                                                 |
+|  =========================================================*/
+const bitcoin = require('bitcoinjs-lib');
+const bitcoinMessage = require('bitcoinjs-message');
+
 /* ===== Blockchain Class ====================================
 |  Class with a constructor for new blockchain 	             |
 |  =========================================================*/
@@ -54,17 +66,65 @@ class Blockchain{
     // Block hash with SHA256 using newBlock and converting to a string
     newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
     // Adding block object to chain
-    await this.addLevelDBData(newBlock.height, newBlock);
+    const hashIdx = await this.getHashIdx();
+    const addrIdx = await this.getAddrIdx();
+    const body = newBlock.body;
+    const address = body.address;
+    
+    console.log('[addBlock] address:', address, '\nnewBlock:\n\t', newBlock);
+    console.log('[addBlock]1\n\t', hashIdx, '\n\t', addrIdx);
+
+    if (address != undefined) {
+      let blockList = addrIdx.get(address);
+
+      if (blockList == undefined) blockList = new Map();
+
+      console.log('[addBlock] blockList:\n\t', blockList, typeof(blockList), blockList.toString());
+      blockList.set(newBlock.height, newBlock.height);
+      addrIdx.set(address, blockList);
+    }
+
+    hashIdx.set(newBlock.hash, newBlock.height);
+
+    console.log('[addBlock]\n\t', hashIdx, '\n\t', addrIdx);
+
+    await this.addLevelDBData(newBlock.height, hashIdx, addrIdx, newBlock);
     const aBlock = await this.getBlock(newBlock.height);
     return aBlock;
    }
 
-  // Add data to levelDB with key/value pair
-  addLevelDBData(key,value){
+   async getHashIdx() {
+    return new Promise((resolve,reject)=>{
+      db.get(HASH_IDX, (err,data)=>{
+        if (err) {
+          resolve(new Map());
+        } else {
+          console.log(`[getHashIdx] data: ${JSON.stringify(data)}`);
+          resolve(this.jsonToMap(data));
+        }
+      })
+    });
+  }
+
+  async getAddrIdx() {
+    return new Promise((resolve,reject)=>{
+      db.get(ADDR_IDX, (err,data)=>{
+        if (err) {
+          resolve(new Map());
+        } else {
+          resolve(this.jsonToMap(data));
+        }
+      })
+    });
+  }
+// Add data to levelDB with key/value pair
+  addLevelDBData(key,hashIdx, addrIdx, block){
     return new Promise((resolve, reject)=>{
       db.batch()
       .put(HEIGHT_KEY, key)
-      .put(key, JSON.stringify(value))
+      .put(HASH_IDX, this.mapToJson(hashIdx))
+      .put(ADDR_IDX, this.mapToJson(addrIdx))
+      .put(key, JSON.stringify(block))
       .write(function(err) {
         if (err) {
           console.log('Block ' + key + ' submission failed', err);
@@ -106,6 +166,35 @@ class Blockchain{
     return JSON.parse(data);
   }
 
+  async getBlockByHash(hash){
+    let hashIdx = await this.getHashIdx();
+    const blockHeight = hashIdx.get(hash);
+    console.log('[getBlockByHash]', blockHeight);
+    if (blockHeight == undefined) return null;
+    return this.getBlock(blockHeight);
+  }
+
+  async getBlocksByAddress(address){
+    let addrIdx = await this.getAddrIdx();
+    console.log('[getBlocksByAddress]', address, addrIdx);
+    if (addrIdx == undefined) return null;
+
+    let blockList = [];
+    const heightList = addrIdx.get(address);
+
+    console.log('heightList:', heightList);
+
+    
+    for (let [height] of heightList) {
+      const block = await this.getBlock(height);
+      console.log('height:', height, 'block:\n\t', block);
+      blockList.push(block);
+    }
+
+    console.log('[getBlocksByAddress] blockList:\n\t', blockList);
+
+    return blockList;
+  }
     // validate block
    validateBlock(blockHeight){
       let res = this.getBlock(blockHeight)
@@ -156,6 +245,61 @@ class Blockchain{
     }
 
   }
+
+  verifyId(address, signature, message) {
+
+    //let address = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ'
+    //let signature = 'IJtpSFiOJrw/xYeucFxsHvIRFJ85YSGP8S1AEZxM4/obS3xr9iz7H0ffD7aM2vugrRaCi/zxaPtkflNzt5ykbc0='
+    //let message = '142BDCeSGbXjWKaAnYXbMpZ6sbrSAo3DpZ:1532330740:starRegistry'
+
+    const res = bitcoinMessage.verify(message, address, signature);
+
+    console.log('verifyId:', res);
+
+    return res;
+  }
+
+  mapToJson(map) {
+    const replacer = function(key,value){
+      if (value instanceof Map) return JSON.stringify([...value], replacer);
+      else if (value instanceof Set) return JSON.stringify([...value], replacer);
+      return value;
+    };
+
+    return JSON.stringify([...map], replacer, ' ');
+  }
+
+  jsonToMap(jsonStr) {
+    const reviver = function(key,value) {
+      //console.log(value + ': ' + typeof(value));
+      const rx = /,/;
+
+      if (typeof(value) !== 'string') return value;
+
+      let aux = value.split(rx);
+      console.log(`aux:(${aux.length}) ${aux}`);
+
+      if (aux[0].charAt(0) == '[')
+        return new Map(JSON.parse(value));
+      else
+        return value;
+      
+    };
+    return new Map(JSON.parse(jsonStr, reviver));
+  }
 }
+
+//var bc = new Blockchain();
+//var amap = new Map();
+//var amap2 = new Map();
+//amap.set('addr1', new Set([1,2,3]));
+
+//amap2.set('addr2_1', new Set([4,5,6]));
+//amap2.set('addr2_2', new Set([7,8,9]));
+//amap2.set('addr2_3', new Set([10,11,12,13,14,15,16]));
+//amap.set('addr2', amap2);
+
+//bc.jsonToMap(bc.mapToJson(amap));
+//amap;
 
 module.exports = Blockchain

@@ -33,6 +33,15 @@ server.route({
         }
     }
 });
+server.route({
+    method: 'GET',
+    path: '/images/{param*}',
+    handler: (request,h) => {
+        console.log(request.params.param);
+        return h.file(`./images/${request.params.param}`);
+    }
+    
+});
 
 const init = async () => {
     await server.register(require('inert'));  // Static content
@@ -45,7 +54,25 @@ const init = async () => {
             logEvents: ['response']
         }
     });
-    await server.register(require('./simpleChainPlugin')); // Private Blockchain
+
+    let options = {};
+
+    // Note:
+    // pass the validation window timeout (in milliseconds) when starting the server.
+    // Default is 300 000.
+    // ex. To run unity tests 
+    // node server.js 100
+    //
+    if (process.argv.length > 2) {
+        options.validationWindow = process.argv[2];
+        console.log(`Validation window time set to ${options.validationWindow} millisecond(s).`);
+    } else {
+        console.log('Validation window time set to 300 milliseconds.');
+    }
+    await server.register({
+        plugin: require('./simpleChainPlugin'),
+         options: options
+        }); // Private Blockchain
 
     server.views({
         engines: {
