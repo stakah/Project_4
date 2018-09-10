@@ -39,6 +39,11 @@ server.route({
     handler: (request,h) => {
         console.log(request.params.param);
         return h.file(`./images/${request.params.param}`);
+    },
+    options: {
+        plugins: {
+            lout: false
+        }
     }
     
 });
