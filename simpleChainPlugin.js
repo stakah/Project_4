@@ -87,10 +87,6 @@ const simpleChainPlugin = {
 
                 if      (bcId == undefined)   errMsg = 'Unknown address.';
                 else if (bcId.valid == false) errMsg = 'Invalid address.';
-                else {
-                    const validationWindow = getValidationWindow(bcId.timestamp, VALIDATION_WINDOW);
-                    if (validationWindow <= 0) errMsg = 'Validation window time out.';
-                }
                 
                 const story = payload.star.story;
                 const storyBytes = Buffer.from(story, 'utf-8');
@@ -115,7 +111,10 @@ const simpleChainPlugin = {
                     const body = {'address': startRegistryBody.address, 'star': startRegistryBody.star};
 
                     const newBlock = await this.blockchain.addBlock( new Block(body));
-                
+
+                    // remove address after star register
+                    this.blockchainIdPool.delete(address);
+                    
                     //console.log(request.payload, body, newBlock);
                     return newBlock;
                 }
@@ -163,7 +162,7 @@ const simpleChainPlugin = {
             handler: async (request, h)=>{
                 
                 const address = request.payload.address;
-                console.log('address:', address);
+                //console.log('address:', address);
 
                 let bcId = this.blockchainIdPool.get(address);
 
@@ -277,7 +276,7 @@ const simpleChainPlugin = {
             handler: async (request, h) => {
                 const address = request.params.ADDRESS;
 
-                console.log('address', address);
+                //console.log('address', address);
 
                 const starsList = await this.blockchain.getBlocksByAddress(address);
 
@@ -301,11 +300,11 @@ const simpleChainPlugin = {
             handler: async (request, h) => {
                 const hash = request.params.HASH;
 
-                console.log('hash', hash);
+                //console.log('hash', hash);
 
                 const block = await this.blockchain.getBlockByHash(hash);
 
-                console.log('block', block);
+                //console.log('block', block);
 
                 if (block == null) {
                     let resp = h.response({
@@ -342,7 +341,7 @@ const simpleChainPlugin = {
 
 function getValidationWindow(timestamp, maxValidationWindow) {    
     let validationWindow = Math.ceil((timestamp + maxValidationWindow - Date.now()) / 1000);
-    console.log(timestamp, maxValidationWindow, +Date.now(), validationWindow);
+    //console.log(timestamp, maxValidationWindow, +Date.now(), validationWindow);
 
     validationWindow = validationWindow > 0 ? validationWindow : 0;
     return validationWindow;

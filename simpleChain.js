@@ -18,6 +18,9 @@ const db = level(chainDB);
 
 const Block = require('./block');
 
+// Star Object
+const StarRegistryBody = require("./StarRegistryBody");
+
 // The key to store the block height
 const HEIGHT_KEY = 'heightKey';
 
@@ -71,22 +74,22 @@ class Blockchain{
     const body = newBlock.body;
     const address = body.address;
     
-    console.log('[addBlock] address:', address, '\nnewBlock:\n\t', newBlock);
-    console.log('[addBlock]1\n\t', hashIdx, '\n\t', addrIdx);
+    //console.log('[addBlock] address:', address, '\nnewBlock:\n\t', newBlock);
+    //console.log('[addBlock]1\n\t', hashIdx, '\n\t', addrIdx);
 
     if (address != undefined) {
       let blockList = addrIdx.get(address);
 
       if (blockList == undefined) blockList = new Map();
 
-      console.log('[addBlock] blockList:\n\t', blockList, typeof(blockList), blockList.toString());
+     //console.log('[addBlock] blockList:\n\t', blockList, typeof(blockList), blockList.toString());
       blockList.set(newBlock.height, newBlock.height);
       addrIdx.set(address, blockList);
     }
 
     hashIdx.set(newBlock.hash, newBlock.height);
 
-    console.log('[addBlock]\n\t', hashIdx, '\n\t', addrIdx);
+    //console.log('[addBlock]\n\t', hashIdx, '\n\t', addrIdx);
 
     await this.addLevelDBData(newBlock.height, hashIdx, addrIdx, newBlock);
     const aBlock = await this.getBlock(newBlock.height);
@@ -99,7 +102,7 @@ class Blockchain{
         if (err) {
           resolve(new Map());
         } else {
-          console.log(`[getHashIdx] data: ${JSON.stringify(data)}`);
+          //console.log(`[getHashIdx] data: ${JSON.stringify(data)}`);
           resolve(this.jsonToMap(data));
         }
       })
@@ -127,7 +130,7 @@ class Blockchain{
       .put(key, JSON.stringify(block))
       .write(function(err) {
         if (err) {
-          console.log('Block ' + key + ' submission failed', err);
+          //console.log('Block ' + key + ' submission failed', err);
           reject(err);
         } else {
           resolve();
@@ -146,12 +149,15 @@ class Blockchain{
                 var h = 0;
                 db.createKeyStream()
                   .on('data', function (key) {
-                     if (key !== HEIGHT_KEY) h++;
+                     if (key !== HEIGHT_KEY && key !== ADDR_IDX && key !== HASH_IDX) h++;
                   })
                   .on('end', function(){
                     let height = h-1;
                     db.put(HEIGHT_KEY, height, function(err){
-                      if (err) console.log('Error saving block height.', err);
+                      if (err) {
+                        console.log('Error saving block height.', err);
+                        reject(err);
+                      }
                       resolve(height);
                     });
                   })
@@ -163,35 +169,38 @@ class Blockchain{
     // get block
   async getBlock(blockHeight){
     let data = await db.get(blockHeight);
-    return JSON.parse(data);
+    let block = await JSON.parse(data);
+    //console.log(data);
+    block.body.star.storyDecoded = StarRegistryBody.hexToString(block.body.star.story);
+    return block;
   }
 
   async getBlockByHash(hash){
     let hashIdx = await this.getHashIdx();
     const blockHeight = hashIdx.get(hash);
-    console.log('[getBlockByHash]', blockHeight);
+    //console.log('[getBlockByHash]', blockHeight);
     if (blockHeight == undefined) return null;
     return this.getBlock(blockHeight);
   }
 
   async getBlocksByAddress(address){
     let addrIdx = await this.getAddrIdx();
-    console.log('[getBlocksByAddress]', address, addrIdx);
+    //console.log('[getBlocksByAddress]', address, addrIdx);
     if (addrIdx == undefined) return null;
 
     let blockList = [];
     const heightList = addrIdx.get(address);
 
-    console.log('heightList:', heightList);
+    //console.log('heightList:', heightList);
 
     
     for (let [height] of heightList) {
       const block = await this.getBlock(height);
-      console.log('height:', height, 'block:\n\t', block);
+      //console.log('height:', height, 'block:\n\t', block);
       blockList.push(block);
     }
 
-    console.log('[getBlocksByAddress] blockList:\n\t', blockList);
+    //console.log('[getBlocksByAddress] blockList:\n\t', blockList);
 
     return blockList;
   }
@@ -207,10 +216,10 @@ class Blockchain{
             let validBlockHash = SHA256(JSON.stringify(block)).toString();
             // Compare
             if (blockHash===validBlockHash) {
-              console.log('Block #'+blockHeight+' valid');
+              //console.log('Block #'+blockHeight+' valid');
               return true;
             } else {
-              console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
+              //console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
               return false;
             }
 
@@ -254,7 +263,7 @@ class Blockchain{
 
     const res = bitcoinMessage.verify(message, address, signature);
 
-    console.log('verifyId:', res);
+    //console.log('verifyId:', res);
 
     return res;
   }
@@ -277,7 +286,7 @@ class Blockchain{
       if (typeof(value) !== 'string') return value;
 
       let aux = value.split(rx);
-      console.log(`aux:(${aux.length}) ${aux}`);
+      //console.log(`aux:(${aux.length}) ${aux}`);
 
       if (aux[0].charAt(0) == '[')
         return new Map(JSON.parse(value));

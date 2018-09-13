@@ -21,7 +21,7 @@ StarRegistryBody.stringToHex = function(str) {
 }
 
 StarRegistryBody.hexToString = function(hex) {
-    return hex.toString('utf-8');
+    return Buffer.from(hex, 'hex').toString('utf8')
 }
 
 module.exports = StarRegistryBody

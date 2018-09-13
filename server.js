@@ -11,7 +11,7 @@ const DEBUG_OFF = false;                         // hide debug messages
 const server = Hapi.server({
     port: 8000,
     host: 'localhost',
-    debug: DEBUG_ALL //DEBUG_OFF
+    debug: DEBUG_OFF //DEBUG_ALL //DEBUG_OFF
 });
 
 server.route({
@@ -37,7 +37,7 @@ server.route({
     method: 'GET',
     path: '/images/{param*}',
     handler: (request,h) => {
-        console.log(request.params.param);
+        //console.log(request.params.param);
         return h.file(`./images/${request.params.param}`);
     },
     options: {
@@ -56,7 +56,7 @@ const init = async () => {
         plugin: require('hapi-pino'),        // Logger
         options: {
             prettyPrint: true,
-            logEvents: ['response']
+            logEvents: false
         }
     });
 
@@ -66,13 +66,13 @@ const init = async () => {
     // pass the validation window timeout (in milliseconds) when starting the server.
     // Default is 300 000.
     // ex. To run unity tests 
-    // node server.js 100
+    // node server.js 20
     //
     if (process.argv.length > 2) {
         options.validationWindow = process.argv[2];
         console.log(`Validation window time set to ${options.validationWindow} millisecond(s).`);
     } else {
-        console.log('Validation window time set to 300 milliseconds.');
+        console.log('Validation window time set to 300000 milliseconds.');
     }
     await server.register({
         plugin: require('./simpleChainPlugin'),

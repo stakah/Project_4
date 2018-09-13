@@ -141,7 +141,7 @@ describe ('SimpleChainTest', function() {
             assert(sj.error.message, 'Invalid address');
         })
 
-        it('should reject with "Validation window timed out."', async function() {
+        it('should reject with "Validation window time out."', async function() {
             const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
             const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
             
@@ -174,7 +174,7 @@ describe ('SimpleChainTest', function() {
     })
 
     describe('POST /block endpoint', function() {
-        it('should reject with "Unknown blockchainId"', async function() {
+        it('should reject with "Unknown address"', async function() {
             const body = {
                 address: 'address',
                 star: {
@@ -189,11 +189,11 @@ describe ('SimpleChainTest', function() {
 
             assert(j.error, 'Rejected with error object');
             assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Unknown blockchainId'));
+            assert(j.error.message.startsWith('Unknown address'));
             
         })
 
-        it('should reject with "Invalid blockchainId"', async function() {
+        it('should reject with "Invalid address"', async function() {
             let body = {
                 address: 'address'
             }
@@ -214,11 +214,11 @@ describe ('SimpleChainTest', function() {
 
             assert(j.error, 'Rejected with error object');
             assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Invalid blockchainId'));
+            assert(j.error.message.startsWith('Invalid address'));
             
         })
 
-        it('should reject with "BlockchainId validity timed out"', async function() {
+        it('should reject second star registry with "Unknown address"', async function() {
             const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
             const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
             
@@ -250,15 +250,19 @@ describe ('SimpleChainTest', function() {
                 }
             }
 
-            await sleep(20); // wait 20ms
+            //await sleep(20); // wait 20ms
 
             r = await postStarRegistry(body);
             j = await r.json();
 
+            assert(j.hash, 'Accept first star');
+
+            r = await postStarRegistry(body);
+            j = await r.json();
 
             assert(j.error, 'Rejected with error object');
             assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('BlockchainId validity timed out'));
+            assert(j.error.message.startsWith('Unknown address'));
             
         })
 
@@ -418,7 +422,7 @@ describe ('SimpleChainTest', function() {
 
             assert(j.error, "Return an error object");
             assert.equal(j.error.code, 404);
-            assert.equal(j.error.message, 'Star with specified hash not found.')
+            assert.equal(j.error.message, 'Block not found.')
         })
     })
 })
