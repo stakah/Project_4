@@ -7,9 +7,10 @@ Blockchain has the potential to change the way that the world approaches data. D
 The star coordinates are similar to latitude and longitude but instead
 relate to coordinates in the sky.
 
-<pre><code>
-  <strong>RA</strong>  13h 03m 33.35s, <strong>DEC</strong> -49<sup>o</sup> 31' 38.1" <strong>MAG</strong> 3.83 <strong>Cen</strong>
-</code></pre>
+  <code><strong>RA</strong>  13h 03m 33.35s </code>
+  <code><strong>DEC</strong> -49<sup>o</sup> 31' 38.1" </code>
+  <code><strong>MAG</strong> 3.83 </code>
+  <code><strong>Cen</strong></code>
 
 
 |Abbreviation|Meaning                               |
@@ -90,7 +91,7 @@ To test code:
 
 2) Run the web server with the command:
 ```
-node server.js
+node index.js
 ```
 3) Request a message to validate your wallet address to be used as the Blockchain Id for registering your star.
 ```
@@ -99,7 +100,7 @@ curl -X "POST" http://localhost:8000/requestValidation \
  -d "{\"address\":\"<your wallet address>\"}"
 
  {"address":"<your wallet address>",
-  "requestTimestamp":1536441149925,
+  "requestTimestamp":1536441149,
   "validationWindow":1,
   "message":"1Jy3bVh9NWRr4NUxZyBT1YCmj63R2fNvjx:1536441149925:starRegistry"}
 ```
@@ -115,7 +116,7 @@ curl -X "POST" "http://localhost:8000/message-signature/validate" \
 
  {"registerStar":true,
   "status":{"address":"1Jy3bVh9NWRr4NUxZyBT7YCmj63R4fNvjx",
-            "requestTimestamp":1536443187889,
+            "requestTimestamp":1536443187,
             "message":"1Jy3bVh9NWRr4NUxZyBT7YCmj63R4fNvjx:1536443187889:starRegistry",
             "validationWindow":248,
             "messageSignature":"valid"}
@@ -287,12 +288,12 @@ A 404 response will be returned containing an error object if the blockchain doe
 
 ```
 curl http://localhost:8000/block/1000
-{"error":{"code":404,"message":"Key not found in database [1000]"}}
+{"error":{"code":404,"message":"Key not found in database [1000]","info":[{"name":"blockHeight","value":1000}]}}
 ```
 
 ### POST /block
 
-Creates and adds a new block in the blockchain with the star registry. Returns a the block added.
+Creates and adds a new block in the blockchain with the star registry. Returns the block added.
 
 * URL: `/block`
 * method: `POST`
@@ -308,10 +309,7 @@ Creates and adds a new block in the blockchain with the star registry. Returns a
 * error responses:
   * error message: `Unknown address.`
     * HTTP status code: `400`
-    * reason: The Blockchain ID was not used to request the validation message.
-  * error message: `Validation window time out.`
-    * HTTP status code: `400`
-    * reason: The validation period expired.
+    * reason: The Blockchain ID was not previously validated by calling `/requestValidation` and `/message-signature/validate` endpoints.
 
 #### Response example
 
@@ -364,7 +362,7 @@ curl -X "POST" http://localhost:8000/requestValidation
 
 {
   "address":"{A WALLET ADDRESS}",
-  "requestTimestamp":1536538079596,
+  "requestTimestamp":1536538079,
   "validationWindow":300,
   "message":"{A WALLET ADDRESS}:1536538079596:starRegistry"
 }
@@ -372,7 +370,7 @@ curl -X "POST" http://localhost:8000/requestValidation
 
 ### POST /message-signature/validate
 
-After signing the message from `/requestValidation` the signature must be sent to this endpoint to validate the Blockchain ID. When validated, it will respond with a status object with `messageSignature` equals to `valid` and the `validationWindow` with the remaining time, in seconds, that the Blockchain ID would be valid to register stars.
+After signing the message from `/requestValidation` the signature must be sent to this endpoint to validate the Blockchain ID. When validated, it will respond with a status object with `messageSignature` equals to `valid`. Once validated, the Blockchain ID can be used to register a single star.
 
 * URL: `/message-signature/validate`
 * method: `POST`
@@ -398,7 +396,7 @@ curl -X "POST" http://localhost:8000/message-signature/validate
   "status":
   {
     "address":"1Jy3bVh9NWRr4NUxZyBT7YCmj63R4fNvjx",
-    "requestTimestamp":1536538079596,
+    "requestTimestamp":1536538079,
     "message":"1Jy3bVh9NWRr4NUxZyBT7YCmj63R4fNvjx:1536538079596:starRegistry",
     "validationWindow":254,
     "messageSignature":"valid"
@@ -428,6 +426,9 @@ Retrieve a block in the blockchain by its hash code.
 * URL: `/stars/hash:{HASH}`
 * method: `GET`
 * response: The block with the hash code.
+* error message: `Block not found.`
+  * HTTP status code: `404`
+  * reason: No block in the blockchain with the hash was found.
 
 #### Response example
 
@@ -450,6 +451,12 @@ curl http://localhost:8000/stars/hash:69806b1dd3c2203aec24267b973438ea283aa8477d
   "previousBlockHash":"c652a9d0c51b3366cf04e06654ab0d7904f5b9eee837101ace064c9cd020a4b9"
 }
 ```
+#### Error response example
+
+```
+curl http://localhost:8000/start/hash:abcd
+{"error":{"code":404,"message":"Block not found.","info":[{"name":"hash","value":"abcd"}]}}
+```
 
 ### GET /stars/address:{ADDRESS}
 Retrieve a list os blocks registered by the Blockchain ID.
@@ -457,10 +464,7 @@ Retrieve a list os blocks registered by the Blockchain ID.
 * URL: `/stars/address:{ADDRESS}`
 * method: `GET`
 * response: list of blocks.
-* error response:
-  * error message: `Block not found.`
-  * HTTP status code: `404`
-  * reason: No block with the Blockchain ID found.
+
 #### Response example
 
 ```

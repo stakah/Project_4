@@ -41,18 +41,23 @@ const bitcoinMessage = require('bitcoinjs-message');
 |  =========================================================*/
 
 class Blockchain{
-  constructor(){
+  constructor(done){
     (async ()=>{
       let height = await this.getBlockHeight();
       if (height < 0) {
-        this.addBlock(new Block("First block in the chain - Genesis block"));
+        await this.addBlock(new Block("First block in the chain - Genesis block"));
       }
+      if (done) done();
     }).bind(this)();
   }
 
   // Removes all the keys in the database
   clearDb() {
-    db.createKeyStream().on('data', key=>db.del(key));
+    return new Promise((resolve, reject)=>{
+      db.createKeyStream().on('data', key=>db.del(key))
+                          .on('end', resolve);
+
+    })
   }
 
    // Add new block
@@ -65,7 +70,7 @@ class Blockchain{
     // Block height
     newBlock.height = height+1;
     // UTC timestamp
-    newBlock.time = new Date().getTime().toString().slice(0,-3);
+    newBlock.time = Blockchain.getTimestamp();
     // Block hash with SHA256 using newBlock and converting to a string
     newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
     // Adding block object to chain
@@ -171,7 +176,9 @@ class Blockchain{
     let data = await db.get(blockHeight);
     let block = await JSON.parse(data);
     //console.log(data);
-    block.body.star.storyDecoded = StarRegistryBody.hexToString(block.body.star.story);
+    if (block.body.star !== undefined) {
+      block.body.star.storyDecoded = StarRegistryBody.hexToString(block.body.star.story);
+    }
     return block;
   }
 
@@ -189,7 +196,7 @@ class Blockchain{
     if (addrIdx == undefined) return null;
 
     let blockList = [];
-    const heightList = addrIdx.get(address);
+    const heightList = addrIdx.get(address) || [];
 
     //console.log('heightList:', heightList);
 
@@ -311,4 +318,9 @@ class Blockchain{
 //bc.jsonToMap(bc.mapToJson(amap));
 //amap;
 
+Blockchain.getTimestamp = function() {
+  const ts = new Date().getTime().toString().slice(0,-3);
+  //console.log(`ts:${ts} typeof(ts):${typeof(ts)}`);
+  return ts;
+}
 module.exports = Blockchain

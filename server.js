@@ -48,7 +48,7 @@ server.route({
     
 });
 
-const init = async () => {
+server.init = async (argv) => {
     await server.register(require('inert'));  // Static content
     await server.register(require('vision')); // Templating
     await server.register(require('lout'));   // Endpoint docs
@@ -68,8 +68,8 @@ const init = async () => {
     // ex. To run unity tests 
     // node server.js 20
     //
-    if (process.argv.length > 2) {
-        options.validationWindow = process.argv[2];
+    if (argv.length > 2) {
+        options.validationWindow = argv[2];
         console.log(`Validation window time set to ${options.validationWindow} millisecond(s).`);
     } else {
         console.log('Validation window time set to 300000 milliseconds.');
@@ -97,4 +97,6 @@ process.on('unhandledRejection', (err) => {
     process.exit(1);
 });
 
-init();
+module.exports = server
+
+//init();

@@ -33,7 +33,13 @@ const simpleChainPlugin = {
                     let resp = h.response({
                             "error":{
                                 "code":404,
-                                "message":e.message
+                                "message":e.message,
+                                "info":[
+                                    {
+                                        "name":"blockHeight",
+                                        "value":blockHeight
+                                    }
+                                ]
                             }
                         });
                     resp.code(404);
@@ -98,7 +104,13 @@ const simpleChainPlugin = {
                     let resp = h.response({
                         "error":{
                             "code":400,
-                            "message":`${errMsg} address:${address}`
+                            "message":errMsg,
+                            "info":[
+                                {
+                                    "name":"address",
+                                    "value":address
+                                }
+                            ]
                         }
                     });
                     resp.code(400);
@@ -175,7 +187,7 @@ const simpleChainPlugin = {
 
                 if (validationWindow <= 0) {
                     // Validation expired. Create new one.
-                    bcId.timestamp = +Date.now();
+                    bcId.timestamp = Blockchain.getTimestamp();
                     this.blockchainIdPool.set(address, bcId);
                     validationWindow = getValidationWindow(bcId.timestamp, VALIDATION_WINDOW);
                 }
@@ -247,8 +259,13 @@ const simpleChainPlugin = {
                     let resp = h.response({
                         "error":{
                             "code":400,
-                            "message":`${err.message}`,
-                            "address": `${address}`
+                            "message":err.message,
+                            "info":[
+                                {
+                                    "name":"address",
+                                    "value":address
+                                }
+                            ]
                         }
                     });
                     resp.code(400);
@@ -310,7 +327,13 @@ const simpleChainPlugin = {
                     let resp = h.response({
                         "error":{
                             "code":404,
-                            "message":`Block not found.`
+                            "message":`Block not found.`,
+                            "info":[
+                                {
+                                    "name":"hash",
+                                    "value":hash
+                                }
+                            ]
                         }
                     });
                     resp.code(404);
@@ -340,7 +363,7 @@ const simpleChainPlugin = {
 }
 
 function getValidationWindow(timestamp, maxValidationWindow) {    
-    let validationWindow = Math.ceil((timestamp + maxValidationWindow - Date.now()) / 1000);
+    let validationWindow = Math.ceil((timestamp * 1000 + maxValidationWindow - Date.now()) / 1000);
     //console.log(timestamp, maxValidationWindow, +Date.now(), validationWindow);
 
     validationWindow = validationWindow > 0 ? validationWindow : 0;

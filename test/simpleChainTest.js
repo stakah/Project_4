@@ -1,428 +1,120 @@
 'use strict';
-const fetch  = require('node-fetch');
-const assert = require('assert');
-const bitcoin = require('bitcoinjs-lib')
-const bitcoinMessage = require('bitcoinjs-message')
-const fixtures = require('./fixtures/SimpleChain');
-const StarRegistryBody = require('../StarRegistryBody');
+const chai = require('chai');
+const expect = chai.expect;
+
+//const fetch  = require('node-fetch');
+//const assert = require('assert');
+//const bitcoin = require('bitcoinjs-lib')
+//const bitcoinMessage = require('bitcoinjs-message')
+//const fixtures = require('./fixtures/SimpleChain');
+//const StarRegistryBody = require('../StarRegistryBody');
+const Blockchain = require('../simpleChain')
+const StarRegistryBody = require('../StarRegistryBody')
+const Block = require('../block')
 
 describe ('SimpleChainTest', function() {
-
-    async function requestEndpoint(url, method, body) {
-        if (method == 'POST')
-            return fetch(url, {
-                method: method,
-                headers: {'Content-Type':'application/json; charset=utf-8'},
-                body: JSON.stringify(body)
-            });
-        else if (method == 'GET')
-        return fetch(url, {
-            method: method
-        });
-}
-
-    async function requestValidation(body) {
-        const url = `${fixtures.baseUrl}/requestValidation`;
-
-        return requestEndpoint(url, 'POST', body);
-    }
-
-    async function messageSignatureValidate(body) {
-        const url = `${fixtures.baseUrl}/message-signature/validate`;
-
-        return requestEndpoint(url, 'POST', body);
-    }
-
-    async function postStarRegistry(body) {
-        const url = `${fixtures.baseUrl}/block`;
-
-        return requestEndpoint(url, 'POST', body);
-    }
-
-    async function getBlock(height) {
-        const url = `${fixtures.baseUrl}/block/${height}`;
-
-        return requestEndpoint(url, 'GET', {});
-    }
-
-    async function getStarByHash(hash) {
-        const url = `${fixtures.baseUrl}/stars/hash:${hash}`;
-
-        return requestEndpoint(url, 'GET', {});
-    }
-
-    function rng () { return Buffer.from('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz') }
-    
     function sleep(ms){
         return new Promise(resolve=>{
             setTimeout(resolve,ms)
         })
     }
 
-    describe('requestValidation endpoint', function() {
-        it('should accept request', async function() {
-            const body = {
-                address: fixtures.address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            assert(j.address, 'Response with address');
-            assert(j.requestTimestamp, 'Response with requestTimestamp');
-            assert(j.validationWindow, 'Response with validationWindow');
-            assert(j.message, 'Response with message');
-    
-        })
+    after(async function(){
+        const bc = new Blockchain();
 
-        it('should reject request', async function() {
-            const body = {
-                foo: 'bar'
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            assert.equal(j.statusCode, 400, 'Error status code');
-            assert.equal(j.error, 'Bad Request','Error type');
-            assert.equal(j.message, 'Invalid request payload input','Error message');
-    
+        await bc.clearDb();
+    });
+
+    describe('Clear DB', function() {
+        it('should clear DB', async function() {
+            const bc = new Blockchain();
+
+            await bc.clearDb();
+
+            let h = await bc.getBlockHeight();
+
+            expect(h).to.be.equal(-1);
         })
     })
 
-
-    describe('message-signature/validate endpoint', function() {
-        it('should validate message signature', async function() {
-
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
+    describe('StarRegistryBody', function(){
+        it('should create new StarRegistryBody', async function(){
             const body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
-            }
-    
-            let sr = await messageSignatureValidate(signBody);
-            let sj = await sr.json();
-                
-            assert.ok(sj.registerStar, 'Can register a star');
-            assert(sj.status, 'Have a status object');
-            assert.equal(sj.status.address, address, 'Address')
-            assert(sj.status.requestTimestamp, 'Status with validation requestTimestamp')
-            assert.equal(sj.status.message, message, 'Status with message')
-            assert(sj.status.validationWindow, 'Status with validation window')
-            assert.equal(sj.status.messageSignature, 'valid', 'Valid signature')
-    
-        })
-
-        it('should reject with "Invalid address <address>"', async function() {
-            const signBody = {
-                address: 'address',
-                signature: 'signature'
-            }
-    
-            let sr = await messageSignatureValidate(signBody);
-            let sj = await sr.json();
-
-            assert(sj.error, 'Returns error object');
-            assert.equal(sj.error.code, 400, 'Bad request');
-            assert(sj.error.message, 'Invalid address');
-        })
-
-        it('should reject with "Validation window time out."', async function() {
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
-            const body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
-            }
-    
-            await sleep(20); // waits 20 ms
-
-            let sr = await messageSignatureValidate(signBody);
-            let sj = await sr.json();
-
-            assert(sj.error, 'Returns error object');
-            assert.equal(sj.error.code, 400, 'Bad request');
-            assert(sj.error.message);
-        })
-    })
-
-    describe('POST /block endpoint', function() {
-        it('should reject with "Unknown address"', async function() {
-            const body = {
-                address: 'address',
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: 'story'
+                address:'1234567890',
+                star:{
+                    ra:'star Right Ascension',
+                    dec:'star Declination',
+                    story:'star story',
+                    magnitude:'star magnitude',
+                    constellation:'star constellation'
                 }
             }
+            const srb = new StarRegistryBody(body);
 
-            const r = await postStarRegistry(body);
-            const j = await r.json();
-
-            assert(j.error, 'Rejected with error object');
-            assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Unknown address'));
+            let bc;
+            let p = new Promise((resolve,reject)=>{
+                bc = new Blockchain(resolve);
+            })
             
+            await p.then();
+
+            const res = await bc.addBlock(new Block({address:srb.address, star:srb.star}));
+
+            expect(res).to.have.property('hash');
+            expect(res.body).to.have.property('address');
+            expect(res.body.address).to.be.equal(body.address);
+            expect(res.body).to.have.property('star');
+        });
+    });
+
+    describe('Blockchain', function() {
+        it('should get block height', async function(){
+            const bc = new Blockchain();
+
+            let h = await bc.getBlockHeight();
+
+            expect(h).to.be.equal(1);
+        });
+
+        it('should get the Genesis block', async function(){
+            const bc = new Blockchain();
+
+            let b = await bc.getBlock(0);
+
+            expect(b).to.have.property('hash');
+            expect(b.body).to.be.equal('First block in the chain - Genesis block');
         })
 
-        it('should reject with "Invalid address"', async function() {
-            let body = {
-                address: 'address'
-            }
+        it('should get star by hash', async function() {
+            const bc = new Blockchain();
 
-            let r = await requestValidation(body);
+            let b = await bc.getBlock(1);
 
-            body = {
-                address: 'address',
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: 'story'
-                }
-            }
+            b = await bc.getBlockByHash(b.hash);
 
-            r = await postStarRegistry(body);
-            const j = await r.json();
-
-            assert(j.error, 'Rejected with error object');
-            assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Invalid address'));
-            
+            expect(b).to.have.property('hash');
+            expect(b).to.have.property('body');
+            expect(b.body).to.have.property('address');
+            expect(b.body).to.have.property('star');
         })
 
-        it('should reject second star registry with "Unknown address"', async function() {
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
-            let body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
+        it('should get stars by address', async function() {
+            const bc = new Blockchain();
+
+            let b = await bc.getBlock(1);
+
+            let arr = await bc.getBlocksByAddress(b.body.address);
+
+            expect(arr).to.be.instanceOf(Array);
+            expect(arr.length).to.be.gt(0);
+
+            for (let i=0; i<arr.length; i++) {
+                expect(arr[i]).to.have.property('hash');
+                expect(arr[i]).to.have.property('body');
+                expect(arr[i].body).to.have.property('address');
+                expect(arr[i].body).to.have.property('star');
             }
-    
-            let sr = await messageSignatureValidate(signBody);
-
-            body = {
-                address: address,
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: 'story'
-                }
-            }
-
-            //await sleep(20); // wait 20ms
-
-            r = await postStarRegistry(body);
-            j = await r.json();
-
-            assert(j.hash, 'Accept first star');
-
-            r = await postStarRegistry(body);
-            j = await r.json();
-
-            assert(j.error, 'Rejected with error object');
-            assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Unknown address'));
-            
         })
+    });
+});
 
-        it('should reject with "Story must be limited to 250 words / 500 bytes."', async function() {
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
-            let body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
-            }
-    
-            let sr = await messageSignatureValidate(signBody);
-
-            let story = '';
-            for (let i=0; i<251; i++) story += 'a ';
-
-            body = {
-                address: address,
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: story
-                }
-            }
-
-            r = await postStarRegistry(body);
-            j = await r.json();
-
-
-            assert(j.error, 'Rejected with error object');
-            assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Story must be limited to 250 words / 500 bytes.'));
-            
-            
-        })
-
-        it('should reject with "Story must be limited to 250 words / 500 bytes."', async function() {
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
-            let body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
-            }
-    
-            let sr = await messageSignatureValidate(signBody);
-
-            let story = '';
-            for (let i=0; i<501; i++) story += 'a';
-
-            body = {
-                address: address,
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: story
-                }
-            }
-
-            r = await postStarRegistry(body);
-            j = await r.json();
-
-
-            assert(j.error, 'Rejected with error object');
-            assert.equal(j.error.code, 400, 'Bad request');
-            assert(j.error.message.startsWith('Story must be limited to 250 words / 500 bytes.'));
-                        
-        })
-
-        it('should accept a star registry', async function() {
-            const keyPair = bitcoin.ECPair.makeRandom({ rng: rng })
-            const { address } = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey })
-            
-            let body = {
-                address: address
-            };
-    
-            let r = await requestValidation(body);
-            let j = await r.json();
-    
-            const message = j.message;
-    
-            const sign = bitcoinMessage.sign(message, keyPair.privateKey, keyPair.compressed);
-            const signature = sign.toString('base64');
-    
-            const signBody = {
-                address: address,
-                signature: signature
-            }
-    
-            let sr = await messageSignatureValidate(signBody);
-
-            body = {
-                address: address,
-                star: {
-                    dec: 'dec',
-                    ra: 'ra',
-                    story: 'story'
-                }
-            }
-
-            r = await postStarRegistry(body);
-            j = await r.json();
-
-
-            assert(j.hash, 'Accept star registry');
-            assert.equal(j.body.address, address);
-            assert(j.body.star, 'Block with a star registry');
-            assert.equal(j.body.star.ra, body.star.ra);
-            assert.equal(j.body.star.dec, body.star.dec);
-            assert.equal(j.body.star.story, StarRegistryBody.stringToHex(body.star.story));
-        })
-    })
-
-    describe('/stars/hash:{HASH} endpoint', function() {
-        it('should return a star registry', async function() {
-            const height = 1;
-            const block = await getBlock(height);
-
-            const r = await getStarByHash(block.hash);
-            const j = await r.json();
-
-            assert.equal(j.hash, block.hash, 'Block with the hash');
-            assert.equal(j.star, block.star);
-        })
-
-        it('should reject with "Star with specified hash not found"', async function() {
-            const hash = "hash";
-
-            const r = await getStarByHash(hash);
-            const j = await r.json();
-
-            assert(j.error, "Return an error object");
-            assert.equal(j.error.code, 404);
-            assert.equal(j.error.message, 'Block not found.')
-        })
-    })
-})
